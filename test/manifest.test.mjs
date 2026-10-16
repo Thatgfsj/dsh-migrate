@@ -28,6 +28,19 @@ test('icon is declared at the top level and stays under 256 KiB', () => {
   assert.match(pkg.icon, /\.svg$/)
 })
 
+test('the client half is declared and its files exist', () => {
+  assert.equal(pkg.dsh.client.platform, 'web')
+  assert.equal(pkg.exports['./client'], './lib/client.js')
+  assert.ok(existsSync(join(repoRoot, 'lib', 'client.js')))
+  for (const file of ['locale/en.json', 'locale/zh.json']) {
+    assert.ok(pkg.files.includes('locale'), 'locale must be published')
+    const meta = JSON.parse(readFileSync(join(repoRoot, file), 'utf8'))
+    assert.equal(typeof meta.meta.title, 'string')
+    assert.equal(typeof meta.meta.description, 'string')
+    assert.equal(pkg.exports[`./${file}`], `./${file}`)
+  }
+})
+
 test('exports expose the entry, the patch and package.json', () => {
   assert.equal(pkg.exports['.'], './lib/index.js')
   assert.equal(pkg.exports['./package.json'], './package.json')
