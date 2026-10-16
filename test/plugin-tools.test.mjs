@@ -1,4 +1,5 @@
 import { strict as assert } from 'node:assert'
+import { join } from 'node:path'
 import { test } from 'node:test'
 
 import { createToolDescriptors, formatPackReport, formatReleaseReport } from '../lib/core/plugin-tools.mjs'
@@ -57,7 +58,7 @@ test('fatfish_pack: asks for a save location, then packs there', async () => {
   const text = await tool.execute({})
   assert.equal(calls.pickPath.length, 1)
   assert.equal(calls.pickPath[0].mode, 'save')
-  assert.ok(calls.pickPath[0].defaultPath.startsWith('/tmp/saves/dsh-fatfish-'))
+  assert.ok(calls.pickPath[0].defaultPath.startsWith(join('/tmp/saves', 'dsh-fatfish-')))
   assert.equal(calls.pack[0].outPath, '/tmp/chosen.zip')
   assert.match(text, /打包完成/)
   assert.match(text, /密钥扫描通过/)
@@ -83,7 +84,7 @@ test('fatfish_pack: cancellation and headless fallback are reported clearly', as
   })
   const text = await byName(headless.descriptors, 'fatfish_pack').execute({})
   assert.match(text, /无法弹出对话框/)
-  assert.ok(headless.calls.pack[0].outPath.startsWith('/tmp/saves/'), 'falls back to the default directory')
+  assert.ok(headless.calls.pack[0].outPath.startsWith(join('/tmp/saves')), 'falls back to the default directory')
 })
 
 test('fatfish_release: defaults to dry-run and asks for a zip when needed', async () => {
