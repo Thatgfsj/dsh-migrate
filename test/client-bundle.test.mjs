@@ -18,7 +18,7 @@ test('client bundle registers a factory under the package name', async () => {
   assert.equal(typeof captured.factory, 'function')
 })
 
-test('the factory asks only for react and returns a slot contribution', () => {
+test('the factory asks only for react and returns the plugin-settings tab contribution', () => {
   const requested = []
   const react = {
     createElement: (type, props, children) => ({ type, props, children }),
@@ -40,10 +40,13 @@ test('the factory asks only for react and returns a slot contribution', () => {
       register(options, Component) { calls.push({ options, Component }); return Component },
     },
   })
-  assert.equal(calls[0].owner, 'conversation.composer.dock')
-  assert.equal(calls[1].options.name, 'conversation.composer.dock')
+  assert.equal(calls[0].owner, 'settings.plugins.tab')
+  assert.equal(calls[1].options.name, 'settings.plugins.tab')
   assert.equal(calls[1].options.id, 'dsh-migrate')
+  assert.equal(typeof calls[1].options.label, 'function')
+  assert.equal(calls[1].options.label(), '大肥鱼搬运')
   assert.equal(typeof calls[1].Component, 'function')
+  assert.doesNotMatch(source, /conversation\.composer\.dock/, 'the panel must not be a permanent composer dock')
 })
 
 test('client bundle obeys the documented UI red lines', () => {
