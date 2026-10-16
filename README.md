@@ -46,13 +46,38 @@ sh install.sh web            # Linux / macOS；profile 名默认 web
 install.cmd web              # Windows
 ```
 
-**方式二：直接从仓库装（开发用）**
+**方式二：本地目录（开发用）**
 
 ```sh
 dsh plugin --profile web add /path/to/dsh-migrate
 ```
 
+**方式三：本地 tarball**（Release 里的 `dsh-migrate-<版本>.tgz`）
+
+```sh
+dsh plugin --profile web add ./dsh-migrate-0.1.1.tgz
+```
+
 装完重启 DSH。两个按钮在 **设置 → 插件 → 「大肥鱼搬运」页签** 里（搬运是偶发操作，不占输入框下方）；模型侧会多出 `fatfish_pack` / `fatfish_release` 两个工具，以及随插件分发的 `dsh-migration` 技能。
+
+### 安装 / 更新 / 卸载：请走这三条路
+
+| 目的 | 怎么做 |
+|---|---|
+| 安装 | `dsh plugin --profile <p> add <本地目录>`，或在 **设置 → 插件 → 添加插件** 里填**本地目录 / 本地 tgz 路径** |
+| 更新 | 再执行一次同样的 `add <本地目录>`（`link:` 安装会自动指向新代码；tarball 安装请换成新 tgz） |
+| 卸载 | `dsh plugin --profile <p> remove dsh-migrate` |
+
+⚠️ **不要**在「添加插件」里填本仓库的 GitHub 地址。本插件没有发布到 npm，git 源安装会让 pnpm 拉远端源码、要求审批它携带的技能（`Agent skills awaiting approval`），并且**会顶掉你原来的本地安装**，之后行为就不再由本机代码决定了。
+
+⚠️ 插件页那一行的**开关是"启用/停用"，不是安装开关**。手滑停用后插件不会加载，页签/工具/技能都会消失；恢复办法是删掉 profile 的 `cordis.patch.yml` 里这两行：
+
+```yaml
+- id: dsh-migrate
+  disabled: true
+```
+
+（也可以直接说「把 dsh-migrate 的 disabled 覆盖删掉」，装了本插件时 agent 的技能里有这一步。）
 
 ## 打包范围
 
