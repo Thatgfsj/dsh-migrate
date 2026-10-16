@@ -25,14 +25,19 @@ jobs:
         run: node --test "test/**/*.test.mjs"
       - name: Build dist zip (dogfoods lib/core/zip.mjs)
         run: node scripts/build-package.mjs
-      - name: Show artifact
+      - name: Build UI-installable tarball
+        run: node scripts/pack-tarball.mjs
+      - name: Show artifacts
         run: |
           ls -l dist
           unzip -l dist/*.zip | tail -5
+          tar -tzf dist/*.tgz | head -12
       - uses: actions/upload-artifact@v4
         with:
-          name: dsh-migrate-zip
-          path: dist/*.zip
+          name: dsh-migrate-artifacts
+          path: |
+            dist/*.zip
+            dist/*.tgz
           if-no-files-found: error
 
   verify-windows:
@@ -46,7 +51,7 @@ jobs:
           node-version: '24'
       - uses: actions/download-artifact@v4
         with:
-          name: dsh-migrate-zip
+          name: dsh-migrate-artifacts
           path: dist
       - name: Expand with PowerShell and check the payload
         shell: pwsh
@@ -68,7 +73,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
-          name: dsh-migrate-zip
+          name: dsh-migrate-artifacts
           path: dist
       - name: unzip -t and check the executable bit
         run: |
@@ -91,12 +96,12 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
-          name: dsh-migrate-zip
+          name: dsh-migrate-artifacts
           path: dist
       - name: Create the release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create "${GITHUB_REF_NAME}" dist/*.zip \
+          gh release create "${GITHUB_REF_NAME}" dist/*.zip dist/*.tgz \
             --title "dsh-migrate ${GITHUB_REF_NAME}" \
             --generate-notes
