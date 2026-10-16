@@ -21,7 +21,7 @@
  *   --json              以 JSON 打印结果
  */
 
-import { copyFile, chmod, lstat, mkdir, readFile, readdir, rename, rm, stat, symlink, utimes, writeFile } from 'node:fs/promises'
+import { copyFile, chmod, cp, lstat, mkdir, readFile, readdir, rename, rm, stat, symlink, utimes, writeFile } from 'node:fs/promises'
 import { createHash } from 'node:crypto'
 import { createReadStream } from 'node:fs'
 import { homedir } from 'node:os'
@@ -194,6 +194,20 @@ async function main() {
       await utimes(destination, info.atime, info.mtime).catch(() => {})
     }
     log(quiet, `restore: 已写入 ${kept.length} 个文件 -> ${targetHome}`)
+
+    // 内嵌的插件副本放到 plugins/ 下（不是 home 根目录），方便稍后安装
+    const pluginTooling = (manifest.tooling ?? []).filter((entry) => entry.path.startsWith('dsh-migrate-tools/plugin/'))
+    if (pluginTooling.length > 0) {
+      const embedded = join(root, 'dsh-migrate-tools', 'plugin')
+      if (await exists(embedded)) {
+        const destination = join(targetHome, 'plugins', 'dsh-migrate')
+        await rm(destination, { recursive: true, force: true })
+        await cp(embedded, destination, { recursive: true })
+        summary.pluginPath = destination
+        log(quiet, `restore: 插件副本已放到 ${destination}`)
+        log(quiet, `restore: 安装命令  dsh plugin --profile <profile> add "${destination}"`)
+      }
+    }
 
     // 路径重写
     const oldHome = manifest.source?.home
