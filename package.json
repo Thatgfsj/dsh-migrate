@@ -1,6 +1,6 @@
 {
   "name": "dsh-migrate",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "DSH plugin: 打包大肥鱼 (export) / 释放大肥鱼 (import) — move a DeepSeek Harness install to another computer as one zip",
   "type": "module",
   "main": "lib/index.js",
