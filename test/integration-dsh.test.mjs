@@ -57,11 +57,24 @@ test('host half mounts with the real DSH runtime and registers both tools', { sk
 
   const registered = []
   const registeredSkills = []
+  const webRoutes = []
+  let injectedDeps = null
   const ctx = {
     tools: { register(tool) { registered.push(tool) } },
     skills: { register(skill) { registeredSkills.push(skill); return () => {} } },
+    inject(deps, callback) {
+      injectedDeps = deps
+      callback({
+        effect: (factory) => factory(),
+        webServer: { register(route) { webRoutes.push(route); return () => {} } },
+      })
+    },
   }
   plugin.apply(ctx, { skillsDir: join(repoRoot, 'skills') })
+
+  assert.deepEqual(injectedDeps, ['webServer'], 'the web bridge must attach through ctx.inject (optional dependency)')
+  assert.equal(webRoutes.length, 4, 'four loopback endpoints must be registered')
+  assert.ok(webRoutes.every((route) => route.kind === 'exact' && route.path.startsWith('/api/dsh-migrate')))
 
   assert.equal(registeredSkills.length, 1, 'the bundled migration skill must be registered')
   const skill = registeredSkills[0]

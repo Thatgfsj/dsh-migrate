@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "dsh-migrate · 大肥鱼搬运工",
+    "description": "打包大肥鱼 / 释放大肥鱼 — move a whole DSH install (plugins, plugin config, skills, context) to another computer as one zip."
+  }
+}
