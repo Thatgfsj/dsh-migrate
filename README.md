@@ -52,7 +52,7 @@ install.cmd web              # Windows
 dsh plugin --profile web add /path/to/dsh-migrate
 ```
 
-装完重启 DSH。Web UI 的输入框下方会出现「打包大肥鱼 / 释放大肥鱼」两个按钮；模型侧会多出 `fatfish_pack` / `fatfish_release` 两个工具，以及随插件分发的 `dsh-migration` 技能。
+装完重启 DSH。两个按钮在 **设置 → 插件 → 「大肥鱼搬运」页签** 里（搬运是偶发操作，不占输入框下方）；模型侧会多出 `fatfish_pack` / `fatfish_release` 两个工具，以及随插件分发的 `dsh-migration` 技能。
 
 ## 打包范围
 
@@ -116,7 +116,7 @@ lib/core/  artifact-name 命名    inventory 发现式清单   sensitive 密钥�
            manifest 归档契约     verify 释放前校验      rewrite 路径重写     policy 打包/校验共用策略
            pack 打包编排         release 释放编排       pick-path 原生对话框  http-bridge Web 端点
            plugin-tools 工具描述  skill 随包技能
-lib/client.js  输入框下方的两个按钮
+lib/client.js  设置 → 插件 里的「大肥鱼搬运」页签（两个按钮）
 tools/restore.mjs  不依赖 DSH 的自救脚本
 skills/dsh-migration/  随插件分发的技能
 ```
