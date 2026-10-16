@@ -14,6 +14,10 @@ test('manifest declares the bundle layer', () => {
   const yaml = readFileSync(join(repoRoot, patch), 'utf8')
   assert.match(yaml, /insert:/, 'patch must insert the dsh-migrate row')
   assert.match(yaml, /name: 'dsh-migrate'/)
+  // Overriding skill-filesystem would replace the row's whole config and drop the
+  // upstream agent-preset skills; the bundled skill goes through the runtime registry.
+  assert.doesNotMatch(yaml, /skill-filesystem/)
+  assert.doesNotMatch(yaml, /customSkillDirs/)
 })
 
 test('icon is declared at the top level and stays under 256 KiB', () => {

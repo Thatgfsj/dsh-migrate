@@ -51,13 +51,26 @@ test('host half mounts with the real DSH runtime and registers both tools', { sk
 
   const plugin = await import(pathToFileURL(join(work, 'plugin', 'lib', 'index.js')).href)
   assert.equal(plugin.name, 'dsh-migrate')
-  assert.deepEqual(plugin.inject, ['tools'])
+  assert.deepEqual(plugin.inject, ['tools', 'skills'])
   assert.equal(typeof plugin.apply, 'function')
   assert.ok(plugin.Config, 'Config must be a Schemastery schema')
 
   const registered = []
-  const ctx = { tools: { register(tool) { registered.push(tool) } } }
-  plugin.apply(ctx, {})
+  const registeredSkills = []
+  const ctx = {
+    tools: { register(tool) { registered.push(tool) } },
+    skills: { register(skill) { registeredSkills.push(skill); return () => {} } },
+  }
+  plugin.apply(ctx, { skillsDir: join(repoRoot, 'skills') })
+
+  assert.equal(registeredSkills.length, 1, 'the bundled migration skill must be registered')
+  const skill = registeredSkills[0]
+  assert.equal(skill.name, 'dsh-migration')
+  assert.equal(skill.source, 'runtime')
+  assert.deepEqual(skill.invocation, { modelInvocable: true, userInvocable: true })
+  assert.ok(skill.content.includes('# 搬运 DSH'))
+  assert.equal(skill.resourceBase.kind, 'directory')
+  assert.match(skill.path, /SKILL\.md$/)
 
   assert.deepEqual(registered.map((tool) => tool.name), ['fatfish_pack', 'fatfish_release'])
   for (const tool of registered) {
