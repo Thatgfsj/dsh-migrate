@@ -39,11 +39,16 @@ export async function packTarball(options = {}) {
   await mkdir(outDir, { recursive: true })
   await rm(join(outDir, `${pkg.name}-${pkg.version}.tgz`), { force: true })
 
-  const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm'
-  const output = execFileSync(npm, ['pack', '--pack-destination', outDir, '--json'], {
+  // Windows cannot spawn `.cmd` without a shell (Node's CVE-2024-27980 mitigation),
+  // and a shell needs the destination quoted because temp paths can contain spaces.
+  const windows = process.platform === 'win32'
+  const npm = windows ? 'npm.cmd' : 'npm'
+  const destination = windows ? `"${outDir}"` : outDir
+  const output = execFileSync(npm, ['pack', '--pack-destination', destination, '--json'], {
     cwd: repoRoot,
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'pipe'],
+    shell: windows,
   })
   const report = JSON.parse(output)
   const entry = Array.isArray(report) ? report[0] : report
