@@ -2,10 +2,11 @@ import { strict as assert } from 'node:assert'
 import { readFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { test } from 'node:test'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
-const entry = await import(join(repoRoot, 'lib', 'index.js'))
+// Windows: an absolute path is not a valid ESM specifier — it must be a file: URL.
+const entry = await import(pathToFileURL(join(repoRoot, 'lib', 'index.js')).href)
 
 test('host half exports a function-plugin shape', () => {
   assert.equal(entry.name, 'dsh-migrate')
