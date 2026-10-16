@@ -145,7 +145,7 @@ test('scanHome: includes plugin payloads verbatim and drops data/secrets', async
 
   // platform binding detected for the ELF payload and the linux-named tarball
   const worker = scan.entries.find((entry) => entry.path.endsWith('worker'))
-  assert.deepEqual(worker.platformBound, ['linux-x64'])
+  assert.deepEqual(worker.platformBound, ['linux'], 'ELF magic names the platform family, not the packing host')
   assert.match(worker.platformEvidence, /elf/)
   const tarball = scan.entries.find((entry) => entry.path.endsWith('.tgz'))
   assert.ok(tarball.platformBound.includes('linux-x64'))
