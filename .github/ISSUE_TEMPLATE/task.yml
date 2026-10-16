@@ -1,0 +1,40 @@
+name: 任务
+description: 一个可验收的开发任务
+title: "[任务] "
+labels: ["type/feat"]
+body:
+  - type: textarea
+    id: background
+    attributes:
+      label: 背景
+      description: 为什么要做，约束是什么
+    validations:
+      required: true
+  - type: textarea
+    id: deliverable
+    attributes:
+      label: 交付物
+      description: 具体文件/行为/命令
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: 验收标准
+      description: 可执行的验证方式与期望输出
+    validations:
+      required: true
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: 依赖
+      description: 被哪些议题阻塞
+    validations:
+      required: false
+  - type: input
+    id: scope
+    attributes:
+      label: 写入范围
+      description: 预计修改的目录/文件前缀
+    validations:
+      required: false

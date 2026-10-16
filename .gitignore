@@ -1,0 +1,10 @@
+node_modules/
+*.zip
+*.tar.gz
+dist/
+coverage/
+.tmp/
+*.log
+.DS_Store
+Thumbs.db
+desktop.ini

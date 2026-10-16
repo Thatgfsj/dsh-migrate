@@ -1,0 +1,63 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: ci / ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: linux, os: ubuntu-latest }
+          - { name: windows, os: windows-latest }
+          - { name: macos, os: macos-latest }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Unit tests
+        run: node --test "test/**/*.test.mjs"
+
+      # The `runner` context is only available inside steps, never at job level.
+      - name: Guard against touching a real DSH home
+        env:
+          DSH_HOME: ${{ runner.temp }}/dsh-home
+        run: node scripts/assert-isolated-home.mjs
+
+      - name: Platform self-check
+        env:
+          DSH_HOME: ${{ runner.temp }}/dsh-home
+        run: node scripts/selfcheck.mjs
+
+      - name: Package dry run
+        run: npm pack --dry-run
+
+  lts:
+    name: ci / node22
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Unit tests
+        run: node --test "test/**/*.test.mjs"
+      - name: Guard against touching a real DSH home
+        env:
+          DSH_HOME: ${{ runner.temp }}/dsh-home
+        run: node scripts/assert-isolated-home.mjs

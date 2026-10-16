@@ -1,0 +1,10 @@
+# dsh-migrate bundle layer — applied after every bundle listed before it in the
+# profile's dsh.profile.bundles.
+#
+# The host half is a no-op until the pack/release tools land (see issues #15/#16);
+# this layer exists so the row is mounted, visible in --dump-config, and so the
+# skill provider can be wired in later without touching the profile by hand.
+- insert:
+    - id: dsh-migrate
+      name: 'dsh-migrate'
+      config: {}

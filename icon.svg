@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128" role="img" aria-label="dsh-migrate: a fat fish carrying a package">
+  <title>dsh-migrate</title>
+  <defs>
+    <linearGradient id="fish" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#38bdf8"/>
+      <stop offset="1" stop-color="#6366f1"/>
+    </linearGradient>
+    <linearGradient id="box" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fbbf24"/>
+      <stop offset="1" stop-color="#f59e0b"/>
+    </linearGradient>
+  </defs>
+  <ellipse cx="58" cy="74" rx="44" ry="30" fill="url(#fish)"/>
+  <path d="M98 74 L126 48 L126 100 Z" fill="url(#fish)"/>
+  <circle cx="34" cy="64" r="6.5" fill="#ffffff"/>
+  <circle cx="32" cy="64" r="3" fill="#0f172a"/>
+  <path d="M52 46 C60 38 70 38 78 46" stroke="#ffffff" stroke-width="3" fill="none" stroke-linecap="round" opacity="0.7"/>
+  <rect x="42" y="12" width="44" height="34" rx="5" fill="url(#box)"/>
+  <rect x="60" y="12" width="8" height="34" fill="#0f172a" opacity="0.18"/>
+  <rect x="42" y="26" width="44" height="6" fill="#0f172a" opacity="0.18"/>
+</svg>
