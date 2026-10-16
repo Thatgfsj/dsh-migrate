@@ -120,7 +120,15 @@ test('a manifest that is absent or has a future schema is rejected', async () =>
 })
 
 test('runtime drift is reported as warning or info', async () => {
-  const zipPath = await packFixture('runtime')
+  // Pin the recorded runtimes: on a CI runner there may be no dsh/pnpm on PATH at
+  // all, and the comparison must not depend on the packing host.
+  const zipPath = await repack(await packFixture('runtime'), 'runtime', {
+    mutate: (manifest) => {
+      manifest.source.dsh = '0.2.0-rc.2'
+      manifest.source.node = '20.11.0'
+      manifest.source.pnpm = '9.0.0'
+    },
+  })
   const report = await verifyArchive(zipPath, {
     hash: false,
     local: { dsh: '9.9.9-alpha', node: '18.0.0', pnpm: '1.0.0' },
