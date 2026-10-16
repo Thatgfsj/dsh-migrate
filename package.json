@@ -12,6 +12,7 @@
   "icon": "./icon.svg",
   "files": [
     "lib",
+    "skills",
     "cordis.patch.yml",
     "icon.svg",
     "README.md",

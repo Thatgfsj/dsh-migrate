@@ -13,7 +13,7 @@ const pkg = JSON.parse(readFileSync(join(repoRoot, 'package.json'), 'utf8'))
 // verified against a real profile (see the smoke script) on a machine that has dsh.
 test('host half exports a function-plugin shape', () => {
   assert.match(source, /export const name = 'dsh-migrate'/)
-  assert.match(source, /export const inject = \['tools'\]/)
+  assert.match(source, /export const inject = \['tools', 'skills'\]/)
   assert.match(source, /export function apply\(ctx, config = \{\}\)/)
   assert.match(source, /export const Config = Schema\.object\(/)
   assert.doesNotMatch(source, /export default/, 'function plugins must not also default-export')
@@ -22,6 +22,12 @@ test('host half exports a function-plugin shape', () => {
 test('entry file registers both 大肥鱼 tools through the shared descriptors', () => {
   assert.match(source, /createToolDescriptors/)
   assert.match(source, /ctx\.tools\.register\(defineTool\(descriptor\)\)/)
+})
+
+test('entry file registers the bundled skill through the runtime registry', () => {
+  assert.match(source, /loadBundledSkills/)
+  assert.match(source, /toRuntimeRegistration/)
+  assert.match(source, /ctx\.skills\.register\(toRuntimeRegistration\(skill\)\)/)
 })
 
 test('entry file only imports @deepseek-ai/* packages that are peers', () => {
