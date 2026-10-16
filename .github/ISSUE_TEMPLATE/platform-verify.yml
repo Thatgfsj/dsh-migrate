@@ -1,0 +1,41 @@
+name: 平台验证
+description: 某个操作系统的专项验证（自动化 + 实机清单）
+title: "[平台] "
+labels: ["type/test"]
+body:
+  - type: dropdown
+    id: platform
+    attributes:
+      label: 平台
+      options:
+        - Windows
+        - macOS
+        - Linux
+    validations:
+      required: true
+  - type: textarea
+    id: automated
+    attributes:
+      label: CI 自动化部分
+      description: 哪些用例在 CI 矩阵里跑，期望结果
+    validations:
+      required: true
+  - type: textarea
+    id: manual
+    attributes:
+      label: 实机清单
+      description: 需要人在真机上做的步骤，逐条可勾选
+      value: |
+        - [ ] 解压 zip
+        - [ ] 选保存位置弹窗
+        - [ ] 释放大肥鱼
+        - [ ] 重启 DSH 后环境正确
+    validations:
+      required: true
+  - type: textarea
+    id: result
+    attributes:
+      label: 验证结果
+      description: 跑完把命令、输出、遇到的坑贴回来
+    validations:
+      required: false

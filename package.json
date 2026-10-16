@@ -1,0 +1,53 @@
+{
+  "name": "dsh-migrate",
+  "version": "0.1.0",
+  "description": "DSH plugin: 打包大肥鱼 (export) / 释放大肥鱼 (import) — move a DeepSeek Harness install to another computer as one zip",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "icon": "./icon.svg",
+  "files": [
+    "lib",
+    "cordis.patch.yml",
+    "icon.svg",
+    "README.md",
+    "LICENSE"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "engines": {
+    "node": "^22.19.0 || >=24.0.0"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": ">=4.0.0",
+    "@deepseek-ai/dsh-tools": ">=0.2.0-rc.2",
+    "@deepseek-ai/schemastery": ">=3.18.0"
+  },
+  "scripts": {
+    "test": "node --test \"test/**/*.test.mjs\""
+  },
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "migration",
+    "backup",
+    "zip"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Thatgfsj/dsh-migrate.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Thatgfsj/dsh-migrate/issues"
+  },
+  "homepage": "https://github.com/Thatgfsj/dsh-migrate#readme"
+}
