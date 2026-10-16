@@ -2,7 +2,9 @@
 
 | 现象 | 原因 | 处理 |
 |---|---|---|
-| `refusing to pack: N credential-like value(s) found` | 某个文件里有像密钥的字符串 | 报告已给出路径/行号/打码值；删掉或改用环境变量后重打包。**不要**为了绕过而把它塞进归档 |
+| `refusing to pack: N credential-like value(s) found` | 某个文本文件里有 key 形状的**值**（`sk-`/`ghp_`/`AKIA`/`xox`/带主体的 PEM） | 报告已给出路径/行号/打码值；删掉或改用环境变量后重打包。**不要**为了绕过而把它塞进归档 |
+| manifest 里 `sensitiveScan.suspicious` 非空 | 有 `api_key = <值>` 这种低置信度命中（常见于第三方源码/文档） | 属报告项，不影响打包；确认是文档示例即可忽略，想更严就开 `strictSecrets: true` |
+| 归档 `excluded` 里有 `.env`/`*.pem` | 凭据文件被按路径硬排除 | 这是设计：新机上重新填 key。若确实需要带，请自行确认无密钥后再处理 |
 | `archive failed verification: sha256 不一致` | zip 传输损坏 | 重新拷贝；`unzip -t` 检查归档 |
 | `VERIFY_FAILED: 归档存在 manifest 未声明的文件` | 归档被第三方工具改写过 | 用原始 zip 释放 |
 | 释放后插件行没生效 | 插件依赖需要重建；或平台绑定项被跳过 | 按报告里的自举命令执行 `dsh plugin --profile <p> add <home>/plugins/dsh-migrate`；或重装平台对应的插件包 |
