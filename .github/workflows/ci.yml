@@ -24,8 +24,6 @@ jobs:
           - { name: linux, os: ubuntu-latest }
           - { name: windows, os: windows-latest }
           - { name: macos, os: macos-latest }
-    env:
-      DSH_HOME: ${{ runner.temp }}/dsh-home
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -35,10 +33,15 @@ jobs:
       - name: Unit tests
         run: node --test "test/**/*.test.mjs"
 
+      # The `runner` context is only available inside steps, never at job level.
       - name: Guard against touching a real DSH home
+        env:
+          DSH_HOME: ${{ runner.temp }}/dsh-home
         run: node scripts/assert-isolated-home.mjs
 
       - name: Platform self-check
+        env:
+          DSH_HOME: ${{ runner.temp }}/dsh-home
         run: node scripts/selfcheck.mjs
 
       - name: Package dry run
@@ -47,8 +50,6 @@ jobs:
   lts:
     name: ci / node22
     runs-on: ubuntu-latest
-    env:
-      DSH_HOME: ${{ runner.temp }}/dsh-home
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -57,4 +58,6 @@ jobs:
       - name: Unit tests
         run: node --test "test/**/*.test.mjs"
       - name: Guard against touching a real DSH home
+        env:
+          DSH_HOME: ${{ runner.temp }}/dsh-home
         run: node scripts/assert-isolated-home.mjs
