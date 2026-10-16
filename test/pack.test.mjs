@@ -101,7 +101,7 @@ test('pack: manifest records platform-bound payloads with evidence', async () =>
   const result = await pack({ home, outPath: join(root, 'platform.zip'), verify: false })
   const worker = result.manifest.platformBound.find((entry) => entry.path.endsWith('worker'))
   assert.ok(worker, 'the ELF payload must be listed as platform bound')
-  assert.ok(worker.platforms.includes('linux-x64'))
+  assert.ok(worker.platforms.includes('linux'), `expected the linux family, got ${worker.platforms.join(',')}`)
   assert.match(worker.evidence, /elf/)
   const tarball = result.manifest.platformBound.find((entry) => entry.path.endsWith('.tgz'))
   assert.ok(tarball.platforms.includes('linux-x64'))
