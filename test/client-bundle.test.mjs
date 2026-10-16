@@ -2,9 +2,9 @@ import { strict as assert } from 'node:assert'
 import { readFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { test } from 'node:test'
-import { pathToFileURL } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 
-const repoRoot = resolve(dirname(import.meta.url.replace('file://', '')), '..')
+const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const clientPath = join(repoRoot, 'lib', 'client.js')
 const source = readFileSync(clientPath, 'utf8')
 
