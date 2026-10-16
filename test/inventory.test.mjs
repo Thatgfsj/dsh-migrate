@@ -66,6 +66,14 @@ test('classify: policy matrix', () => {
     ['storages/workspace.json', 'include', CATEGORY.context],
     ['storages/session_projcache/x', 'exclude', 'data'],
     ['.credentials.yaml', 'exclude', 'secret'],
+    ['.env', 'exclude', 'secret'],
+    ['plugins/web/.env', 'exclude', 'secret'],
+    ['.env.local', 'exclude', 'secret'],
+    ['.env.example', 'include', CATEGORY.context],
+    ['plugins/a/.env.template', 'include', CATEGORY.plugin],
+    ['certs/server.pem', 'exclude', 'secret'],
+    ['ssh/id_rsa', 'exclude', 'secret'],
+    ['home/.npmrc', 'exclude', 'secret'],
     ['.credentials', 'exclude', 'secret'],
     ['sessions/a/b', 'exclude', 'data'],
     ['attachments/x', 'exclude', 'data'],
@@ -98,6 +106,11 @@ test('detectPlatformBinding: names, extensions, magic bytes', () => {
 
   const executable = detectPlatformBinding({ path: 'bin/script', mode: 0o755 }, 'linux-x64')
   assert.equal(executable.bound, true)
+
+  // Documentation that merely mentions a platform in its name is not binding.
+  const docs = detectPlatformBinding({ path: 'node_modules/dsh-ops/docs/macos-arm64.md', mode: 0o644 }, 'linux-x64')
+  assert.equal(docs.bound, false)
+  assert.deepEqual(docs.platforms, [])
 
   const plain = detectPlatformBinding({ path: 'docs/readme.md', mode: 0o644 }, 'linux-x64')
   assert.equal(plain.bound, false)

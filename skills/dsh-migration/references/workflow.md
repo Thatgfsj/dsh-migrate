@@ -12,7 +12,7 @@ fatfish_pack
 内部流水线（`lib/core/pack.mjs`，进度事件按这段映射 0–100%）：
 
 1. **scan** — `inventory.mjs` 发现式扫描，得到分类条目、排除清单、可选清单、平台绑定项
-2. **secrets** — 逐文本文件扫 `sk-`/`ghp_`/`AKIA`/私钥块/赋值式密钥；**命中即中止**（错误里的密钥已打码）
+2. **secrets** — 凭据**文件**（`.credentials*`/`.env`/`*.pem`/`id_rsa*`…）在扫描前就按路径排除；剩下的文本文件扫 `sk-`/`ghp_`/`AKIA`/`xox`/带完整 base64 主体的 PEM 块 → **命中即中止**（错误里的密钥已打码）；泛化的 `api_key = <看起来像字面量>` 只记 warning 并写进 manifest（`strictSecrets: true` 才会中止）
 3. **hash** — 有界并发算 sha256（默认 8 路）
 4. **archive** — 写 `manifest.json` → 目录项 → payload → 内嵌工具；取消/失败会删掉半成品
 5. **verify** — 复算 CRC/尺寸、条目数一致性、`assertArchiveIsClean`（策略二次确认）
