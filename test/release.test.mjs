@@ -162,9 +162,29 @@ test('release: post-install self-check never fails the release', async () => {
   })
   assert.equal(result.ok, true)
   assert.equal(result.postInstall.checked, false)
-  assert.equal(result.postInstall.profile, 'web', 'defaults to the web profile')
+  assert.equal(result.postInstall.profile, 'web', 'the released home has exactly one profile (web)')
   assert.deepEqual(result.postInstall.skippedBundles, [])
   assert.ok(result.postInstall.warnings.some((warning) => warning.includes('自检未完成')), JSON.stringify(result.postInstall.warnings))
+})
+
+test('release: post-install self-check skips a home without profiles and never spawns', async () => {
+  const home = join(root, 'src-noprofile')
+  await mkdir(home, { recursive: true })
+  await writeFile(join(home, 'AGENTS.md'), '# global\n')
+  const zipPath = join(root, 'noprofile.zip')
+  await pack({ home, outPath: zipPath })
+  const targetHome = join(root, 'target-noprofile')
+
+  const result = await release({
+    zipPath, targetHome, dryRun: false, bootstrap: false,
+    dshBin: 'dsh-migrate-definitely-not-installed',
+  })
+  assert.equal(result.ok, true)
+  assert.equal(result.postInstall.checked, false)
+  assert.equal(result.postInstall.command, null)
+  assert.equal(result.postInstall.profile, null)
+  assert.ok(result.postInstall.warnings.some((warning) => warning.includes('未指定 profile')), JSON.stringify(result.postInstall.warnings))
+  assert.ok(!result.postInstall.warnings.some((warning) => warning.includes('找不到命令')), 'must not spawn dsh when no profile is known')
 })
 
 test('payloadEntries only returns files', () => {

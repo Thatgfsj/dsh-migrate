@@ -1,5 +1,5 @@
 import { strict as assert } from 'node:assert'
-import { chmod, mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { chmod, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { after, before, test } from 'node:test'
@@ -17,15 +17,34 @@ let root
 before(async () => { root = await mkdtemp(join(tmpdir(), 'dsh-migrate-postinstall-')) })
 after(async () => { await rm(root, { recursive: true, force: true }) })
 
-/** Executable fake `dsh`: prints `message` on stderr and exits with `code`. */
-async function fakeDsh(name, message, code) {
+/** Create `home/profiles/<name>/package.json` for every requested profile. */
+async function makeHome(name, profiles = []) {
+  const home = join(root, name)
+  for (const profile of profiles) {
+    const file = join(home, 'profiles', profile, 'package.json')
+    await mkdir(join(file, '..'), { recursive: true })
+    await writeFile(file, JSON.stringify({ name: `dsh-profile-${profile}` }))
+  }
+  return home
+}
+
+/** Executable fake `dsh`: counts calls, optionally sleeps, prints `message`, exits `code`. */
+async function fakeDsh(name, message, code, { sleepSeconds = 0 } = {}) {
   const messagePath = join(root, `${name}.txt`)
+  const counterPath = join(root, `${name}.calls`)
   const script = join(root, name)
   await writeFile(messagePath, message)
-  const lines = ['#!/bin/sh', 'cat "' + messagePath + '" >&2', 'echo "DSH_HOME=$DSH_HOME"', 'exit ' + code]
+  const lines = [
+    '#!/bin/sh',
+    `echo x >> "${counterPath}"`,
+    sleepSeconds > 0 ? `sleep ${sleepSeconds}` : 'true',
+    `cat "${messagePath}" >&2`,
+    'echo "DSH_HOME=$DSH_HOME"',
+    `exit ${code}`,
+  ]
   await writeFile(script, lines.join('\n') + '\n')
   await chmod(script, 0o755)
-  return script
+  return { script, counterPath }
 }
 
 test('parseProfileDiagnostics reads the 0.2.1 skipping message', () => {
@@ -45,42 +64,83 @@ test('parseProfileDiagnostics tolerates empty input', () => {
   assert.deepEqual(parseProfileDiagnostics(''), { skippedBundles: [], missingPatches: [] })
 })
 
+test('postInstallCheck skips without a profile name and never guesses one', async () => {
+  const result = await postInstallCheck({ dshBin: 'dsh-migrate-definitely-not-installed', targetHome: join(root, 'home-anon') })
+  assert.equal(result.checked, false)
+  assert.equal(result.command, null)
+  assert.equal(result.profile, null)
+  assert.ok(result.warnings.some((warning) => warning.includes('未指定 profile')), JSON.stringify(result.warnings))
+})
+
+// The major from the #52 review: `dsh --profile web --dump-config` creates a
+// missing profile (0.2.1), so the check must refuse to spawn for a profile the
+// released home does not already have.
+test('postInstallCheck never spawns for a profile that is not there', async () => {
+  const targetHome = await makeHome('home-noprofile')
+  const result = await postInstallCheck({ dshBin: 'dsh-migrate-definitely-not-installed', targetHome, profile: 'web' })
+  assert.equal(result.checked, false)
+  assert.equal(result.output, '', 'no dsh output means no dsh was spawned')
+  assert.ok(result.warnings.some((warning) => warning.includes('没有 profile')), JSON.stringify(result.warnings))
+  assert.ok(!result.warnings.some((warning) => warning.includes('找不到命令')), 'spawning would have reported ENOENT instead')
+})
+
+test('postInstallCheck reports a missing dsh for an existing profile', async () => {
+  const targetHome = await makeHome('home-missing-dsh', ['web'])
+  const result = await postInstallCheck({ dshBin: 'dsh-migrate-definitely-not-installed', targetHome, profile: 'web' })
+  assert.equal(result.checked, false)
+  assert.equal(result.profile, 'web')
+  assert.deepEqual(result.skippedBundles, [])
+  assert.ok(result.warnings.some((warning) => warning.includes('找不到命令')), JSON.stringify(result.warnings))
+})
+
 const posixOnly = process.platform === 'win32' ? 'the fake dsh is a POSIX shell script' : false
 
-test('postInstallCheck reports skipped bundles from the released home dsh', { skip: posixOnly }, async () => {
-  const dshBin = await fakeDsh('fake-dsh-skip', SKIPPING, 0)
-  const targetHome = join(root, 'home-skip')
-  const result = await postInstallCheck({ dshBin, targetHome, profile: 'web' })
+test('postInstallCheck does not invoke dsh at all for a missing profile', { skip: posixOnly }, async () => {
+  const targetHome = await makeHome('home-noprofile-counter')
+  const { script, counterPath } = await fakeDsh('fake-dsh-count', SKIPPING, 0)
+  const result = await postInstallCheck({ dshBin: script, targetHome, profile: 'web' })
+  assert.equal(result.checked, false)
+  assert.ok(result.warnings.some((warning) => warning.includes('没有 profile')), JSON.stringify(result.warnings))
+  await assert.rejects(() => readFile(counterPath), /ENOENT/, 'the fake dsh must never run')
+})
+
+test('postInstallCheck inspects an existing profile and reports skipped bundles', { skip: posixOnly }, async () => {
+  const targetHome = await makeHome('home-skip', ['web'])
+  const { script, counterPath } = await fakeDsh('fake-dsh-skip', SKIPPING, 0)
+  const result = await postInstallCheck({ dshBin: script, targetHome, profile: 'web' })
   assert.equal(result.checked, true)
   assert.deepEqual(result.skippedBundles, ['dsh-migrate'])
   assert.deepEqual(result.missingPatches, [])
   assert.ok(result.warnings.some((warning) => warning.includes('跳过了 profile bundle')), JSON.stringify(result.warnings))
-  assert.equal(result.command, `${dshBin} --profile web --dump-config`)
+  assert.equal(result.command, `${script} --profile web --dump-config`)
   assert.ok(result.output.includes(`DSH_HOME=${targetHome}`), 'must compose the released home, not the ambient one')
+  assert.equal((await readFile(counterPath, 'utf8')).trim(), 'x', 'exactly one invocation')
 })
 
-test('postInstallCheck degrades to checked:false on a non-zero exit', { skip: posixOnly }, async () => {
-  const dshBin = await fakeDsh('fake-dsh-fail', 'dsh: boom', 3)
-  const result = await postInstallCheck({ dshBin, targetHome: join(root, 'home-fail'), profile: 'tui' })
+test('postInstallCheck reports the exit code on a non-zero exit', { skip: posixOnly }, async () => {
+  const targetHome = await makeHome('home-fail', ['tui'])
+  const { script } = await fakeDsh('fake-dsh-fail', 'dsh: boom', 3)
+  const result = await postInstallCheck({ dshBin: script, targetHome, profile: 'tui' })
   assert.equal(result.checked, false)
   assert.equal(result.profile, 'tui')
   assert.deepEqual(result.skippedBundles, [])
-  assert.ok(result.warnings.some((warning) => warning.includes('自检未完成')), JSON.stringify(result.warnings))
+  assert.ok(result.warnings.some((warning) => warning.includes('自检命令退出码 3')), JSON.stringify(result.warnings))
 })
 
 test('postInstallCheck still surfaces findings from a non-zero exit', { skip: posixOnly }, async () => {
-  const dshBin = await fakeDsh('fake-dsh-skip-fail', SKIPPING, 1)
-  const result = await postInstallCheck({ dshBin, targetHome: join(root, 'home-skip-fail') })
+  const targetHome = await makeHome('home-skip-fail', ['web'])
+  const { script } = await fakeDsh('fake-dsh-skip-fail', SKIPPING, 1)
+  const result = await postInstallCheck({ dshBin: script, targetHome, profile: 'web' })
   assert.equal(result.checked, false)
   assert.deepEqual(result.skippedBundles, ['dsh-migrate'])
   assert.ok(result.warnings.some((warning) => warning.includes('跳过了 profile bundle')))
   assert.ok(result.warnings.some((warning) => warning.includes('自检未完成')))
 })
 
-test('postInstallCheck reports a missing dsh without throwing', async () => {
-  const result = await postInstallCheck({ dshBin: 'dsh-migrate-definitely-not-installed', targetHome: join(root, 'home-missing') })
+test('postInstallCheck times out instead of hanging the release', { skip: posixOnly }, async () => {
+  const targetHome = await makeHome('home-timeout', ['web'])
+  const { script } = await fakeDsh('fake-dsh-hang', '', 0, { sleepSeconds: 30 })
+  const result = await postInstallCheck({ dshBin: script, targetHome, profile: 'web', timeoutMs: 300 })
   assert.equal(result.checked, false)
-  assert.equal(result.profile, 'web', 'profile defaults to web')
-  assert.deepEqual(result.skippedBundles, [])
-  assert.ok(result.warnings.some((warning) => warning.includes('找不到命令')), JSON.stringify(result.warnings))
+  assert.ok(result.warnings.some((warning) => warning.includes('自检超时')), JSON.stringify(result.warnings))
 })
