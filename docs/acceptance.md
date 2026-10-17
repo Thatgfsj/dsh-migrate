@@ -6,6 +6,7 @@
 
 - [ ] 解压交付 zip（Windows 用资源管理器 / macOS 用 Finder / Linux 用 `unzip`），执行 `install.sh`/`install.cmd` 能装进测试 profile
 - [ ] `dsh --profile <p> --dump-config` 里出现 `# == dsh-migrate` 与 `- id: dsh-migrate`，且**没有** `patch: entry ... not found`
+- [ ] 启动冒烟：web 模板 profile 上 `dsh --profile <p> --help` 打印 web 用法并 exit 0（base 模板 profile 的 `--help` 在 0.2.1 会进 TUI 挂住，不要拿它冒烟）
 - [ ] 重启 DSH 后，会话技能目录里出现 `dsh-migration`
 - [ ] 对 agent 说「打包大肥鱼」→ 弹出**原生保存对话框** → 进度从 0 走到 100 → 报告里有 zip 路径与体积
 - [ ] 把 zip 拷到另一个 home → 说「释放大肥鱼」→ 进度走完 → 报告里有目标 home、备份路径
