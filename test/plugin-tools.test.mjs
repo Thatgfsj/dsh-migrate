@@ -112,4 +112,23 @@ test('formatPackReport / formatReleaseReport carry the important facts', () => {
   assert.match(releaseText, /跳过/)
   assert.match(releaseText, /已安装插件到 profile「web」/)
   assert.match(formatReleaseReport({ ...releaseResult, dryRun: true }), /dry-run/)
+
+  // #46: skipped bundles and a failed self-check are visible, with the fix command.
+  const skipped = formatReleaseReport({
+    ...releaseResult,
+    postInstall: {
+      checked: true, profile: 'web', skippedBundles: ['dsh-migrate'], missingPatches: [],
+      warnings: ['DSH 跳过了 profile bundle：dsh-migrate（这些层没有生效）'],
+    },
+  })
+  assert.match(skipped, /⚠️ 自检/)
+  assert.match(skipped, /dsh-migrate/)
+  assert.match(skipped, /dsh plugin --profile web install/)
+
+  const clean = formatReleaseReport({ ...releaseResult, postInstall: { checked: true, profile: 'web', skippedBundles: [], missingPatches: [], warnings: [] } })
+  assert.match(clean, /bundle 全部解析正常/)
+  assert.doesNotMatch(clean, /⚠️ 自检/)
+
+  const failed = formatReleaseReport({ ...releaseResult, postInstall: { checked: false, profile: 'web', skippedBundles: [], missingPatches: [], warnings: ['释放后自检未完成（找不到命令 dsh）'] } })
+  assert.match(failed, /自检未完成/)
 })

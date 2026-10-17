@@ -46,11 +46,13 @@ sh install.sh web            # Linux / macOS；profile 名默认 web
 install.cmd web              # Windows
 ```
 
-**方式二：本地目录（开发用）**
+**方式二：本地目录（推荐，免审批）**
 
 ```sh
 dsh plugin --profile web add /path/to/dsh-migrate
 ```
+
+`link:` 安装不会触发技能审批，改完代码重启即生效——日常和开发都走这条。
 
 **方式三：本地 tarball**（Release 里的 `dsh-migrate-<版本>.tgz`）
 
@@ -58,15 +60,27 @@ dsh plugin --profile web add /path/to/dsh-migrate
 dsh plugin --profile web add ./dsh-migrate-0.1.1.tgz
 ```
 
+⚠️ 0.2.1-rc.2 实测：**tgz 安装会因为包内带技能而要求批准**（同一份包用本地目录安装则不会）：
+
+```text
+Agent skills awaiting approval: dsh-migrate@file:../../…/dsh-migrate-0.1.1.tgz.
+Run "pnpm approve" to review them.
+```
+
+这时**插件本体（两个按钮 + `fatfish_pack` / `fatfish_release`）照常可用**，只是随包的 `dsh-migration` 技能要等批准后才暴露。批准方式：在提示的 profile 目录里执行 `pnpm approve`，或在 **设置 → 插件** 里批准。嫌多这一步，就用方式二的目录安装。
+
 装完重启 DSH。两个按钮在 **设置 → 插件 → 「大肥鱼搬运」页签** 里（搬运是偶发操作，不占输入框下方）；模型侧会多出 `fatfish_pack` / `fatfish_release` 两个工具，以及随插件分发的 `dsh-migration` 技能。
 
 ### 安装 / 更新 / 卸载：请走这三条路
 
 | 目的 | 怎么做 |
 |---|---|
-| 安装 | `dsh plugin --profile <p> add <本地目录>`，或在 **设置 → 插件 → 添加插件** 里填**本地目录 / 本地 tgz 路径** |
-| 更新 | 再执行一次同样的 `add <本地目录>`（`link:` 安装会自动指向新代码；tarball 安装请换成新 tgz） |
+| 安装（推荐） | `dsh plugin --profile <p> add <本地目录>`，或在 **设置 → 插件 → 添加插件** 里填**本地目录**：免审批 |
+| 安装（tgz） | `dsh plugin --profile <p> add <本地 tgz>`；0.2.1+ 会要求批准随包技能（见上），插件本体不受影响 |
+| 更新 | 再执行一次同样的 `add <本地目录>`（`link:` 安装自动指向新代码）；tgz 安装换成新 tgz 再 `add` |
 | 卸载 | `dsh plugin --profile <p> remove dsh-migrate` |
+
+> 0.2.1 的「添加插件」内部把输入识别为「本地目录 / Git 仓库 / 压缩包（tarball）」，但输入框说明只写了「包名、GitHub 仓库地址或本地目录路径」——粘本地 tgz 路径实测可用。
 
 ⚠️ **不要**在「添加插件」里填本仓库的 GitHub 地址。本插件没有发布到 npm，git 源安装会让 pnpm 拉远端源码、要求审批它携带的技能（`Agent skills awaiting approval`），并且**会顶掉你原来的本地安装**，之后行为就不再由本机代码决定了。
 
