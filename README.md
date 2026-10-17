@@ -123,7 +123,7 @@ Linux / Windows / macOS 三平台都在 CI 里跑（矩阵 `ubuntu-latest`、`wi
 | 释放后插件不生效 | 报告里会给出 `dsh plugin --profile <p> add <home>/plugins/dsh-migrate`；自举失败不影响释放本身 |
 | 报告里 `skipped` 非空 | 跨平台二进制被跳过，属预期；在新机重装对应插件即可 |
 | 想退回旧环境 | 释放时默认整体备份为 `<home>.bak-<时间>`：删掉新 home，把备份改回原名 |
-| `dsh --profile <p> --help` 挂住不返回 | 该 profile 是 base 模板（`dsh plugin add` 默认建的），0.2.1 起 base app 的 `--help` 会进 TUI | 冒烟改用 web profile：`dsh --profile <p> --from-default-profile web --help`；或外面套 `timeout 60`（macOS 没有 `timeout`，直接跑或用 `gtimeout`） |
+| `dsh --profile <p> --help` 挂住不返回 | 该 profile 是 base 模板（`dsh plugin add` 默认建的），base app 的 `--help` 会进 TUI（0.2.0-rc.2 与 0.2.1 实测都挂） | 冒烟改用 web profile：`dsh --profile <p> --from-default-profile web --help`；或外面套 `timeout 60`（macOS 没有 `timeout`，直接跑或用 `gtimeout`） |
 
 更细的排障表随技能分发：`skills/dsh-migration/references/troubleshooting.md`（装上插件后 agent 也能直接读到）。
 

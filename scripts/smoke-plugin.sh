@@ -7,8 +7,8 @@
 # and pnpm (dsh uses it internally).
 #
 # Why a web profile and not the default one: `dsh plugin add` initializes a plain
-# profile (bundles: `@deepseek-ai/dsh-base`), and on dsh >= 0.2.1 the base app's
-# `--help` boots the TUI and never returns. The web app's `--help` prints usage
+# profile (bundles: `@deepseek-ai/dsh-base`), and the base app's `--help` boots
+# the TUI and never returns (reproduced on 0.2.0-rc.2 and 0.2.1-rc.2). The web app's `--help` prints usage
 # and exits 0 on both 0.2.0-rc.2 and 0.2.1-rc.2, so the boot smoke runs against a
 # web profile under `timeout` where available. `--from-default-profile` alone
 # *boots* the profile it creates, so `--help` is what makes it initialize + exit.
@@ -58,7 +58,7 @@ fi
 
 echo "== boot smoke (web app --help; the host half must mount without throwing)"
 if ! run_bounded dsh --profile "$profile" --help >/dev/null; then
-  echo "FAIL: boot smoke did not exit 0 (a base-template profile hangs here on dsh >= 0.2.1)" >&2
+  echo "FAIL: boot smoke did not exit 0 (a base-template profile hangs here: base app --help enters the TUI)" >&2
   exit 1
 fi
 

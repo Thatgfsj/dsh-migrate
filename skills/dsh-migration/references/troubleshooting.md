@@ -17,4 +17,4 @@
 | 「添加插件」里填了 GitHub 地址 | 本插件没发 npm，git 安装会拉远端源码、要求审批技能，并**顶掉本地安装** | 卸载后改用本地目录或本地 tgz：`dsh plugin --profile <p> add <路径>` |
 | 安装时提示 `Agent skills awaiting approval` | 远端来源的插件携带技能时需要用户批准（平台安全策略） | 要么批准，要么改用本地目录/tgz 安装——本地安装不需要审批 |
 | 体积比预期大很多 | 插件里的媒体资源（例如启动动画视频）本来就大 | 看 manifest `totals.bytesByCategory`，按需取舍；不要改打包器的判据 |
-| `dsh --profile <p> --help` 挂住不退出 | `dsh plugin add` 默认建的是 base 模板 profile；0.2.1 起 base app 的 `--help` 会进 TUI，而不是打印用法 | 冒烟改用 web profile：`dsh --profile <p> --from-default-profile web --help`；或外套 `timeout 60`（macOS 没有 `timeout`，可用 `gtimeout` 或直接跑） |
+| `dsh --profile <p> --help` 挂住不退出 | `dsh plugin add` 默认建的是 base 模板 profile；base app 的 `--help` 会进 TUI 而不是打印用法（0.2.0-rc.2 与 0.2.1 实测都挂） | 冒烟改用 web profile：`dsh --profile <p> --from-default-profile web --help`；或外套 `timeout 60`（macOS 没有 `timeout`，可用 `gtimeout` 或直接跑） |
