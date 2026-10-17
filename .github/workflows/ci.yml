@@ -66,6 +66,10 @@ jobs:
   # checks (branch protection gates ci / linux, ci / windows, ci / macos), so a
   # broken upstream prerelease shows up as a red job without blocking main.
   # Every step lives in scripts/compat-check.sh — local runs use the same file.
+  #
+  # Revisit (#51): this job has been green since it landed; once it has stayed
+  # green across a few dsh releases, drop `continue-on-error` and add
+  # `ci / compat-next` to the required checks in branch protection.
   compat-next:
     name: ci / compat-next
     runs-on: ubuntu-latest
@@ -79,7 +83,7 @@ jobs:
 
       # Installs @deepseek-ai/dsh@next into $RUNNER_TEMP, runs the real-runtime
       # integration test, composes a web profile with this plugin, then boots it
-      # on a random port and probes /api/dsh-migrate/state.
+      # on an OS-assigned port and probes /api/dsh-migrate/state.
       - name: Compat smoke against dsh@next
         env:
           DSH_NEXT_PREFIX: ${{ runner.temp }}/dsh-next

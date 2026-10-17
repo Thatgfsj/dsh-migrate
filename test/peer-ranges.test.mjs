@@ -307,6 +307,10 @@ function loadRealSemver() {
   }
 }
 
+// On CI there is no node_modules next to the repo and no dsh on PATH, so the
+// cross-check below reports `skipped 1` there; the fixed expectation tables
+// above are what actually guards CI. Locally, with a DSH install present, it
+// runs the whole corpus against the real node-semver and must not disagree.
 const realSemver = loadRealSemver()
 
 test('the minimal matcher agrees with the real node-semver where available', { skip: realSemver ? false : 'node-semver is not resolvable on this host' }, () => {
