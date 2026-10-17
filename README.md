@@ -126,6 +126,8 @@ Run "pnpm approve" to review them.
 
 Linux / Windows / macOS 三平台都在 CI 里跑（矩阵 `ubuntu-latest`、`windows-latest`、`macos-latest` × node 24，另加 node 22）。跨平台细节：Windows 长路径与反斜杠、macOS 的 `__MACOSX`/`ditto`、Linux 无 zenity/kdialog 时的兜底，都在代码与用例里覆盖。
 
+支持的 DSH 版本：`0.2.0-rc.2`（latest）与 `0.2.1-rc.2`（next）；CI 的 `compat-next` job 会跟随 next 通道实机复验。
+
 **人工验收清单**（需要真机 + 浏览器）见 [docs/acceptance.md](docs/acceptance.md)。
 
 ## 排障
