@@ -10,8 +10,10 @@
 #   3. PATH=<prefix>/bin:$PATH node --test test/integration-dsh.test.mjs
 #   4. build a web profile from the shipped template, install this plugin, and
 #      assert the dsh-migrate layer/row in `dsh --dump-config`
-#   5. boot that profile on a random free port, wait up to 90s for
-#      GET /api/dsh-migrate/state -> 200 {"ok":true}, then stop it
+#   5. boot that profile with --port 0 (the OS picks, so there is no
+#      bind/close/rebind race), read the assigned port from the startup log, wait
+#      up to 90s for GET /api/dsh-migrate/state -> 200 {"ok":true} whose version
+#      matches package.json, then stop it
 #
 # A failed boot prints the captured server log.
 #
@@ -20,8 +22,9 @@
 #   DSH_NEXT_PREFIX      install prefix        (default: fresh temp dir)
 #   DSH_COMPAT_PNPM_SPEC pnpm spec to install  (default: pnpm@12)
 #   DSH_COMPAT_HOME      throwaway DSH_HOME    (default: fresh temp dir)
-#   COMPAT_PORT          fixed port            (default: OS-assigned)
+#   COMPAT_PORT          fixed port instead of --port 0
 #   COMPAT_WAIT_SECONDS  readiness budget      (default: 90)
+#   DSH_FORCE_INSTALL=1  reinstall dsh/pnpm even when their prefixes exist
 #   KEEP_TMP=1           keep the temp dir for debugging
 #
 # Usage: bash scripts/compat-check.sh
@@ -69,16 +72,20 @@ fail_with_log() {
 
 step "install $spec into $prefix"
 dsh_bin="$prefix/bin/dsh"
-if [ ! -x "$dsh_bin" ]; then
+if [ "${DSH_FORCE_INSTALL:-0}" = "1" ] || [ ! -x "$dsh_bin" ]; then
   npm install --prefix "$prefix" --global --no-fund --no-audit "$spec"
+else
+  echo "-- reusing the dsh already installed at $dsh_bin (DSH_FORCE_INSTALL=1 reinstalls)"
 fi
 next_version="$(PATH="$prefix/bin:$PATH" "$dsh_bin" --version | tail -n 1)"
 echo "dsh next = $next_version"
 
 pnpm_prefix="$tmp_root/pnpm"
-if [ ! -x "$pnpm_prefix/bin/pnpm" ]; then
+if [ "${DSH_FORCE_INSTALL:-0}" = "1" ] || [ ! -x "$pnpm_prefix/bin/pnpm" ]; then
   step "provision $pnpm_spec into $pnpm_prefix (dsh installs plugins through pnpm)"
   npm install --prefix "$pnpm_prefix" --global --no-fund --no-audit "$pnpm_spec"
+else
+  echo "-- reusing the pnpm already installed at $pnpm_prefix/bin/pnpm (DSH_FORCE_INSTALL=1 reinstalls)"
 fi
 echo "-- pnpm $("$pnpm_prefix/bin/pnpm" --version) at $pnpm_prefix/bin/pnpm"
 bin_path="$pnpm_prefix/bin:$prefix/bin"
@@ -91,8 +98,9 @@ if ! PATH="$prefix/bin:$PATH" node --test --test-reporter=tap "$repo_root/test/i
   exit 1
 fi
 cat "$tap"
-if ! grep -q '^# pass 1' "$tap" || grep -qE '^# skipped [1-9]' "$tap"; then
-  echo "FAIL: the integration test did not run against the installed next runtime (skipped?)" >&2
+if ! grep -qE '^# pass [1-9][0-9]*$' "$tap" || ! grep -q '^# fail 0$' "$tap" || grep -qE '^# skipped [1-9]' "$tap"; then
+  echo "FAIL: the integration test did not pass cleanly on the next runtime (want '# pass N', '# fail 0', '# skipped 0'):" >&2
+  grep -E '^# (pass|fail|skipped) ' "$tap" >&2 || true
   exit 1
 fi
 
@@ -125,17 +133,20 @@ fi
 echo "-- layer ok: $(grep -m1 '^- id: dsh-migrate' "$dump")"
 
 step "boot the web profile and probe /api/dsh-migrate/state"
+body="$tmp_root/state.json"
 if [ -n "${COMPAT_PORT:-}" ]; then
   port="$COMPAT_PORT"
+  port_arg="$port"
 else
-  port="$(node -e 'const net = require("node:net"); const probe = net.createServer(); probe.listen(0, "127.0.0.1", () => { process.stdout.write(String(probe.address().port)); probe.close() })')"
+  # --port 0: the OS picks a free port, so there is no race between a probe socket
+  # and dsh binding it. The real port is read back from the startup log below.
+  port=""
+  port_arg="0"
 fi
-url="http://127.0.0.1:$port/api/dsh-migrate/state"
-body="$tmp_root/state.json"
 
-"$dsh_bin" --profile "$profile" --host 127.0.0.1 --port "$port" --no-open > "$log" 2>&1 &
+"$dsh_bin" --profile "$profile" --host 127.0.0.1 --port "$port_arg" --no-open > "$log" 2>&1 &
 server_pid=$!
-echo "-- pid $server_pid, port $port, waiting up to ${wait_seconds}s for $url"
+echo "-- pid $server_pid, port ${port:-auto}, waiting up to ${wait_seconds}s for the listening URL"
 
 ready=0
 last_code="none"
@@ -146,26 +157,40 @@ while [ "$SECONDS" -lt "$deadline" ]; do
     wait "$server_pid"
     exit_code=$?
     set -e
-    fail_with_log "dsh exited with code $exit_code before $url answered"
+    fail_with_log "dsh exited with code $exit_code before the endpoint answered"
   fi
-  last_code="$(curl -sS --max-time 2 -o "$body" -w '%{http_code}' "$url" 2>/dev/null || true)"
-  if [ "$last_code" = "200" ]; then
-    ready=1
-    break
+  if [ -z "$port" ]; then
+    # 0.2.x prints: dsh web: http://127.0.0.1:<port>/?token=...
+    port="$(grep -oE 'https?://(127\.0\.0\.1|localhost|\[::1\]):[0-9]+' "$log" | head -n 1 | grep -oE '[0-9]+$' || true)"
+    if [ -n "$port" ]; then
+      echo "-- listening on http://127.0.0.1:$port (read from the startup log)"
+    fi
+  fi
+  if [ -n "$port" ]; then
+    last_code="$(curl -sS --max-time 2 -o "$body" -w '%{http_code}' "http://127.0.0.1:$port/api/dsh-migrate/state" 2>/dev/null || true)"
+    if [ "$last_code" = "200" ]; then
+      ready=1
+      break
+    fi
   fi
   sleep 1
 done
-[ "$ready" = "1" ] || fail_with_log "timed out after ${wait_seconds}s waiting for $url (last status: $last_code)"
+[ "$ready" = "1" ] || fail_with_log "timed out after ${wait_seconds}s waiting for /api/dsh-migrate/state (last status: $last_code)"
 
 node -e '
 const { readFileSync } = require("node:fs")
 const state = JSON.parse(readFileSync(process.argv[1], "utf8"))
+const expected = JSON.parse(readFileSync(process.argv[2], "utf8")).version
 if (state.ok !== true) {
   console.error("FAIL: /api/dsh-migrate/state answered without ok:true:", JSON.stringify(state))
   process.exit(1)
 }
-console.log(`-- state ok:true home=${state.home} version=${state.version}`)
-' "$body"
+if (state.version !== expected) {
+  console.error(`FAIL: state.version=${state.version} but package.json says ${expected} (version drift)`)
+  process.exit(1)
+}
+console.log(`-- state ok:true home=${state.home} version=${state.version} (== package.json)`)
+' "$body" "$repo_root/package.json"
 
 step "stop the server"
 kill "$server_pid" 2>/dev/null || true
