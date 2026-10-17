@@ -5,10 +5,12 @@
 # workflow calls this script, it never re-implements them.
 #
 #   1. npm install --prefix <prefix> --global @deepseek-ai/dsh@next
-#   2. PATH=<prefix>/bin:$PATH node --test test/integration-dsh.test.mjs
-#   3. build a web profile from the shipped template, install this plugin, and
+#   2. provision pnpm into its own prefix (dsh shells out to it, and GitHub
+#      runners do not ship one)
+#   3. PATH=<prefix>/bin:$PATH node --test test/integration-dsh.test.mjs
+#   4. build a web profile from the shipped template, install this plugin, and
 #      assert the dsh-migrate layer/row in `dsh --dump-config`
-#   4. boot that profile on a random free port, wait up to 90s for
+#   5. boot that profile on a random free port, wait up to 90s for
 #      GET /api/dsh-migrate/state -> 200 {"ok":true}, then stop it
 #
 # A failed boot prints the captured server log.
@@ -16,6 +18,7 @@
 # Env overrides:
 #   DSH_NEXT_SPEC        npm spec to install   (default: @deepseek-ai/dsh@next)
 #   DSH_NEXT_PREFIX      install prefix        (default: fresh temp dir)
+#   DSH_COMPAT_PNPM_SPEC pnpm spec to install  (default: pnpm@12)
 #   DSH_COMPAT_HOME      throwaway DSH_HOME    (default: fresh temp dir)
 #   COMPAT_PORT          fixed port            (default: OS-assigned)
 #   COMPAT_WAIT_SECONDS  readiness budget      (default: 90)
@@ -26,6 +29,7 @@ set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 spec="${DSH_NEXT_SPEC:-@deepseek-ai/dsh@next}"
+pnpm_spec="${DSH_COMPAT_PNPM_SPEC:-pnpm@12}"
 wait_seconds="${COMPAT_WAIT_SECONDS:-90}"
 
 tmp_root="$(mktemp -d "${TMPDIR:-/tmp}/dsh-compat-XXXXXX")"
@@ -71,6 +75,14 @@ fi
 next_version="$(PATH="$prefix/bin:$PATH" "$dsh_bin" --version | tail -n 1)"
 echo "dsh next = $next_version"
 
+pnpm_prefix="$tmp_root/pnpm"
+if [ ! -x "$pnpm_prefix/bin/pnpm" ]; then
+  step "provision $pnpm_spec into $pnpm_prefix (dsh installs plugins through pnpm)"
+  npm install --prefix "$pnpm_prefix" --global --no-fund --no-audit "$pnpm_spec"
+fi
+echo "-- pnpm $("$pnpm_prefix/bin/pnpm" --version) at $pnpm_prefix/bin/pnpm"
+bin_path="$pnpm_prefix/bin:$prefix/bin"
+
 step "integration test with the next runtime on PATH"
 tap="$tmp_root/integration.tap"
 if ! PATH="$prefix/bin:$PATH" node --test --test-reporter=tap "$repo_root/test/integration-dsh.test.mjs" > "$tap" 2>&1; then
@@ -92,7 +104,7 @@ if ! "$dsh_bin" --profile "$profile" --from-default-profile web --dump-config > 
   echo "FAIL: could not create the web profile from the shipped template" >&2
   exit 1
 fi
-"$dsh_bin" plugin --profile "$profile" add "$repo_root"
+PATH="$bin_path:$PATH" "$dsh_bin" plugin --profile "$profile" add "$repo_root"
 
 dump="$tmp_root/dump-config.yml"
 "$dsh_bin" --profile "$profile" --dump-config > "$dump" 2> "$tmp_root/dump-config.err"

@@ -54,6 +54,7 @@ test('scripts/compat-check.sh implements the whole channel check', async () => {
   const script = await readFile(join(repoRoot, 'scripts', 'compat-check.sh'), 'utf8')
   for (const marker of [
     '@deepseek-ai/dsh@next',           // the channel under test
+    'DSH_COMPAT_PNPM_SPEC',            // the job provisions pnpm itself (runners have none)
     'test/integration-dsh.test.mjs',   // real-runtime integration test
     '--from-default-profile web',      // build the profile from the shipped web template
     '--dump-config',                   // assert the composed layer
