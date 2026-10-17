@@ -15,6 +15,7 @@
 | 想撤销释放 | 默认会整体备份 | 删掉新 home，把 `<home>.bak-<时间>` 改回 `<home>` |
 | 插件页点开关后页签/工具全没了 | 那个开关是**启用/停用**，停用会往 profile 的 `cordis.patch.yml` 写入 `- id: dsh-migrate / disabled: true` | 把这两行删掉（或让 agent 删），重启 DSH |
 | 「添加插件」里填了 GitHub 地址 | 本插件没发 npm，git 安装会拉远端源码、要求审批技能，并**顶掉本地安装** | 卸载后改用本地目录或本地 tgz：`dsh plugin --profile <p> add <路径>` |
-| 安装时提示 `Agent skills awaiting approval` | 远端来源的插件携带技能时需要用户批准（平台安全策略） | 要么批准，要么改用本地目录/tgz 安装——本地安装不需要审批 |
+| 安装时提示 `Agent skills awaiting approval` | 插件带技能，且来源不是本地目录：git / npm / **本地 tgz 都会触发**（0.2.1 实测） | 插件本体照常可用；批准（提示的 profile 目录里 `pnpm approve`，或插件页批准）后随包技能才暴露；想免这一步就改用**本地目录**安装 |
 | 体积比预期大很多 | 插件里的媒体资源（例如启动动画视频）本来就大 | 看 manifest `totals.bytesByCategory`，按需取舍；不要改打包器的判据 |
 | `dsh --profile <p> --help` 挂住不退出 | `dsh plugin add` 默认建的是 base 模板 profile；base app 的 `--help` 会进 TUI 而不是打印用法（0.2.0-rc.2 与 0.2.1 实测都挂） | 冒烟改用 web profile：`dsh --profile <p> --from-default-profile web --help`；或外套 `timeout 60`（macOS 没有 `timeout`，可用 `gtimeout` 或直接跑） |
+| 升级 DSH / 搬到新机后「装了没反应」，`--dump-config` 里有 `skipping profile bundle "X"` | DSH 解析不到该 bundle 时会**静默跳过**（升级后没重建依赖、`link:` 失效等），只在 stderr 留一行 | 在目标机执行 `dsh plugin --profile <p> install` 重建依赖后重启 DSH；释放报告里的 `postInstall` 自检会主动报这条 |

@@ -26,16 +26,30 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# GNU `timeout` only; stock macOS ships neither `timeout` nor `gtimeout`, so
-# there we run the command directly (a hang is then visible instead of silent).
+# Run a command with a wall-clock cap. GNU `timeout` / `gtimeout` when present,
+# otherwise a bash-native watchdog (stock macOS has neither binary): the cap has
+# to hold everywhere, so a hang can never wedge the smoke run. stdout/stderr of
+# the wrapped command pass through unchanged.
 run_bounded() {
   if command -v timeout >/dev/null 2>&1; then
-    timeout "$smoke_timeout" "$@"
-  elif command -v gtimeout >/dev/null 2>&1; then
-    gtimeout "$smoke_timeout" "$@"
-  else
-    "$@"
+    local trapped_status=0
+    timeout "$smoke_timeout" "$@" || trapped_status=$?
+    return "$trapped_status"
   fi
+  if command -v gtimeout >/dev/null 2>&1; then
+    local trapped_status=0
+    gtimeout "$smoke_timeout" "$@" || trapped_status=$?
+    return "$trapped_status"
+  fi
+  "$@" &
+  local pid=$!
+  ( sleep "$smoke_timeout"; if kill -0 "$pid" 2>/dev/null; then kill "$pid" 2>/dev/null; echo "run_bounded: killed pid $pid after ${smoke_timeout}s: $*" >&2; fi ) &
+  local watchdog=$!
+  local status=0
+  wait "$pid" || status=$?
+  kill "$watchdog" 2>/dev/null || true
+  wait "$watchdog" 2>/dev/null || true
+  return "$status"
 }
 
 echo "== creating profile $profile from the shipped web template"

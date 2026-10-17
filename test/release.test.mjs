@@ -60,7 +60,8 @@ test('release: end-to-end into a fresh home, with rewrite and zero residuals', a
   assert.equal(plan.dryRun, true)
   await assert.rejects(() => readFile(join(targetHome, 'AGENTS.md')), /ENOENT/, 'dry run must not write')
 
-  const result = await release({ zipPath, targetHome, dryRun: false })
+  // checkPostInstall: false keeps this test hermetic; the self-check has its own tests.
+  const result = await release({ zipPath, targetHome, dryRun: false, checkPostInstall: false })
   assert.equal(result.ok, true)
   assert.equal(result.backupPath, null, 'no backup when the target does not exist')
   assert.equal(result.residuals.length, 0, JSON.stringify(result.residuals))
@@ -89,7 +90,8 @@ test('release: existing home is renamed aside, never merged silently', async () 
   await mkdir(targetHome, { recursive: true })
   await writeFile(join(targetHome, 'OLD-MARKER.txt'), 'previous install\n')
 
-  const result = await release({ zipPath, targetHome, dryRun: false })
+  // checkPostInstall: false keeps this test hermetic; the self-check has its own tests.
+  const result = await release({ zipPath, targetHome, dryRun: false, checkPostInstall: false })
   assert.equal(result.ok, true)
   assert.ok(result.backupPath, 'a backup must be taken')
   assert.equal(await readFile(join(result.backupPath, 'OLD-MARKER.txt'), 'utf8'), 'previous install\n')
@@ -105,7 +107,7 @@ test('release: merge writes into the existing home without a backup', async () =
   await mkdir(targetHome, { recursive: true })
   await writeFile(join(targetHome, 'KEEP.txt'), 'keep me\n')
 
-  const result = await release({ zipPath, targetHome, dryRun: false, merge: true })
+  const result = await release({ zipPath, targetHome, dryRun: false, merge: true, checkPostInstall: false })
   assert.equal(result.backupPath, null)
   assert.equal(await readFile(join(targetHome, 'KEEP.txt'), 'utf8'), 'keep me\n')
   assert.ok(await readFile(join(targetHome, 'AGENTS.md'), 'utf8'))
@@ -117,7 +119,7 @@ test('release: platform-incompatible payloads are skipped and reported', async (
   await pack({ home: source, outPath: zipPath })
   const targetHome = join(root, 'target-platform')
 
-  const result = await release({ zipPath, targetHome, dryRun: false, targetPlatform: 'win32-x64' })
+  const result = await release({ zipPath, targetHome, dryRun: false, targetPlatform: 'win32-x64', checkPostInstall: false })
   assert.ok(result.skipped.some((item) => item.path.endsWith('worker')), JSON.stringify(result.skipped))
   await assert.rejects(() => readFile(join(targetHome, 'plugins/dsh-demo/runtime/linux-x64/worker')), /ENOENT/)
   assert.ok(await readFile(join(targetHome, 'plugins/dsh-demo/entry.js'), 'utf8'))
@@ -144,6 +146,45 @@ test('release: refuses a tampered archive', async () => {
     (error) => error instanceof ReleaseError && error.code === 'VERIFY_FAILED',
   )
   await assert.rejects(() => readFile(join(root, 'target-tamper', 'AGENTS.md')), /ENOENT/, 'nothing may be written')
+})
+
+
+test('release: post-install self-check never fails the release', async () => {
+  const source = await buildHome('src-postinstall')
+  const zipPath = join(root, 'postinstall.zip')
+  await pack({ home: source, outPath: zipPath })
+  const targetHome = join(root, 'target-postinstall')
+
+  // A missing dsh must degrade to checked:false + warning, never throw (#46).
+  const result = await release({
+    zipPath, targetHome, dryRun: false,
+    dshBin: 'dsh-migrate-definitely-not-installed',
+  })
+  assert.equal(result.ok, true)
+  assert.equal(result.postInstall.checked, false)
+  assert.equal(result.postInstall.profile, 'web', 'the released home has exactly one profile (web)')
+  assert.deepEqual(result.postInstall.skippedBundles, [])
+  assert.ok(result.postInstall.warnings.some((warning) => warning.includes('自检未完成')), JSON.stringify(result.postInstall.warnings))
+})
+
+test('release: post-install self-check skips a home without profiles and never spawns', async () => {
+  const home = join(root, 'src-noprofile')
+  await mkdir(home, { recursive: true })
+  await writeFile(join(home, 'AGENTS.md'), '# global\n')
+  const zipPath = join(root, 'noprofile.zip')
+  await pack({ home, outPath: zipPath })
+  const targetHome = join(root, 'target-noprofile')
+
+  const result = await release({
+    zipPath, targetHome, dryRun: false, bootstrap: false,
+    dshBin: 'dsh-migrate-definitely-not-installed',
+  })
+  assert.equal(result.ok, true)
+  assert.equal(result.postInstall.checked, false)
+  assert.equal(result.postInstall.command, null)
+  assert.equal(result.postInstall.profile, null)
+  assert.ok(result.postInstall.warnings.some((warning) => warning.includes('未指定 profile')), JSON.stringify(result.postInstall.warnings))
+  assert.ok(!result.postInstall.warnings.some((warning) => warning.includes('找不到命令')), 'must not spawn dsh when no profile is known')
 })
 
 test('payloadEntries only returns files', () => {
